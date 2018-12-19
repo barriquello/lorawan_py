@@ -37,6 +37,7 @@ class BOARD:
     DIO2 = 18   # RaspPi GPIO 1
     DIO3 = 20   # RaspPi GPIO 28
     LED  = 27   # RaspPi GPIO 2 connects to the LED
+    RESET = 17
     #SWITCH = 4  # RaspPi GPIO 4 # comentar esta linha
     SPI_CS = 2  # Chip Select pin to use    # The spi object is kept here
     spi = None
@@ -53,11 +54,18 @@ class BOARD:
         # LED
         GPIO.setup(BOARD.LED, GPIO.OUT)
         GPIO.output(BOARD.LED, 0)
+
+        GPIO.setup(BOARD.RESET, GPIO.OUT)
+        GPIO.output(BOARD.RESET, 1)
+
+        BOARD.reset()
+
         # switch
         #GPIO.setup(BOARD.SWITCH, GPIO.IN, pull_up_down=GPIO.PUD_DOWN) 
         # DIOx
         for gpio_pin in [BOARD.DIO0, BOARD.DIO1, BOARD.DIO2, BOARD.DIO3]:
             GPIO.setup(gpio_pin, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+
         # blink 2 times to signal the board is set up
         BOARD.blink(.1, 2)
 
@@ -125,3 +133,10 @@ class BOARD:
             time.sleep(time_sec)
             BOARD.led_on()
         BOARD.led_off()
+
+    @staticmethod
+    def reset():
+        GPIO.output(BOARD.RESET, GPIO.LOW) 
+        time.sleep(.100)
+        GPIO.output(BOARD.RESET, GPIO.HIGH)
+        
