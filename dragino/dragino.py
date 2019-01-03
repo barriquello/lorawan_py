@@ -29,6 +29,8 @@ from .LoRaWAN import new as lorawan_msg
 from .LoRaWAN import MalformedPacketException
 from .LoRaWAN.MHDR import MHDR
 from .FrequncyPlan import LORA_FREQS
+import pdb
+from time import sleep
 
 DEFAULT_LOG_LEVEL = logging.WARN #Change after finishing development
 DEFAULT_RETRIES = 3 # How many attempts to send the message
@@ -56,6 +58,8 @@ class Dragino(LoRa):
         self.devnonce = [randrange(256), randrange(256)] #random nonce
         self.logger.debug("Nonce = %s", self.devnonce)
         self.freqs = freqs
+        self.MODE = MODE
+        self.state = 0
         #Set all auth method tockens to None as not sure what auth method we'll use
         self.device_addr = None
         self.network_key = None
@@ -130,12 +134,38 @@ class Dragino(LoRa):
         """
             Callback on RX complete, signalled by I/O
         """
-        self.logger.debug("Recieved message")
+        self.logger.debug("Received message")
         self.clear_irq_flags(RxDone=1)
         payload = self.read_payload(nocheck=True)
-        lorawan = lorawan_msg([], self.appkey)
+        print("".join(format(x, '02x') for x in bytes(payload)))
+        #pdb.set_trace()
+        #lorawan = lorawan_msg([], self.appkey)
+        lorawan = lorawan_msg(self.network_key, self.apps_key)
+        #lorawan = LoRaWAN.new(self.network_key, self.apps_key)
         lorawan.read(payload)
-        lorawan.get_payload()
+        print(lorawan.get_mhdr().get_mversion())
+        print(lorawan.get_mhdr().get_mtype())
+        print(lorawan.get_mic())
+        print(lorawan.compute_mic())
+        print(lorawan.valid_mic())
+        if lorawan.valid_mic() == True:
+            print("================================\n")
+            print ("MENSAGEM RECEBIDA CORRETAMENTE:\n")
+            print("".join(list(map(chr, lorawan.get_payload()))))
+            print("\n")
+            print("================================\n")
+        else:
+            print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n")
+            print ("MENSAGEM RECEBIDA INCORRETAMENTE:\n")
+            print("".join(list(map(chr, lorawan.get_payload()))))
+            print("\n")
+            print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n")
+
+        print("".join(format(x, '02x') for x in bytes(lorawan.get_payload())))
+        print ("RXWIN: ", self.state)
+        print ("RSSI: ", self.get_pkt_rssi_value())    
+        print ("SNR: ", self.get_pkt_snr_value())   
+        #lorawan.get_payload()
 #        print(lorawan.get_mhdr().get_mversion())
         if lorawan.get_mhdr().get_mtype() == MHDR.JOIN_ACCEPT:
             self.logger.debug("Join resp")
@@ -148,6 +178,11 @@ class Dragino(LoRa):
             self.apps_key = lorawan.derive_appskey(self.devnonce)
             self.logger.info("APPS key: %s", self.apps_key)
 
+        self.set_mode(MODE.SLEEP)
+        self.state = 3
+        #self.reset_ptr_rx()
+        #self.set_mode(MODE.RXSINGLE)    
+
     def on_tx_done(self):
         """
             Callback on TX complete is signaled using I/O
@@ -158,7 +193,13 @@ class Dragino(LoRa):
         self.set_dio_mapping([0, 0, 0, 0, 0, 0])
         self.set_invert_iq(1)
         self.reset_ptr_rx()
+        self.set_freq(923.9)
+        self.set_bw(9)
         self.set_mode(MODE.RXCONT)
+
+    def on_rx_timeout(self):
+        self.state = 0
+        print("rx timeout")
 
 
     def join(self):
@@ -214,6 +255,7 @@ class Dragino(LoRa):
                 self.write_payload(lorawan.to_raw())
                 self.logger.debug("Packet = %s", lorawan.to_raw())
                 self.set_dio_mapping([1, 0, 0, 0, 0, 0])
+                self.state = 1
                 self.set_mode(MODE.TX)
                 self.logger.info(
                     "Succeeded on attempt %d/%d", attempt, self.lora_retries)
@@ -317,8 +359,8 @@ class DraginoConfig(object):
             self.logger.debug("Auth mode: %s", self.auth)
             if self.auth == AUTH_ABP:
                 self.logger.debug("Device Address: %s", ''.join('{:02x}'.format(x) for x in self.devaddr))
-                self.logger.debug("Device Address: %s", ''.join('{:02x}'.format(x) for x in self.nwskey))
-                self.logger.debug("Device Address: %s", ''.join('{:02x}'.format(x) for x in self.appskey))
+                self.logger.debug("Network Session Key: %s", ''.join('{:02x}'.format(x) for x in self.nwskey))
+                self.logger.debug("App Session Key: %s", ''.join('{:02x}'.format(x) for x in self.appskey))
                 #self.logger.debug("Device Address: %s", str(self.devaddr))
                 #self.logger.debug("Network Session Key: %s", str(self.nwskey))
                 #self.logger.debug("App Session Key: %s", str(self.appskey))
