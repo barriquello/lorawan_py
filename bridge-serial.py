@@ -16,6 +16,8 @@ baudRate = 115200
 GPIO.setwarnings(False)
 
 D = Dragino("dragino2.ini", logging_level=logging.ERROR)
+D.lora_retries = 0
+ans = b""
 
 ser = serial.Serial(serialPortA, baudRate, timeout=3)
 ser.reset_input_buffer()
@@ -23,11 +25,15 @@ ser.reset_output_buffer()
 timeout = 0
 while 1:
     if D.state == 0:
-        ans = b""
-        while ser.in_waiting > 0:
-            ans += ser.readline()
-        if len(ans) == 0:
-            ans = "?"
+        if D.lora_retries == 0:        
+            ans = b""
+            while ser.in_waiting > 0:
+                ans += ser.readline()
+            if len(ans) == 0:
+                ans = "?"
+            else:
+                ans = ans.decode()
+                D.lora_retries = 3           
         D.set_mode(D.MODE.SLEEP)              
         print("Sent message:") 
         print(ans)
@@ -51,7 +57,10 @@ while 1:
             timeout = 0
             D.state = 0
     else:
+        print(D.rxbuffer)
         sleep(10)
+        if len(D.rxbuffer) > 0:
+            ser.write(D.rxbuffer.encode("utf-8"))
         timeout = 0
         D.state = 0         
        

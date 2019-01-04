@@ -7,6 +7,8 @@ from .MHDR import MHDR
 
 class FHDR:
 
+    ACK_BIT = 0x20
+    
     def read(self, mac_payload):
         if len(mac_payload) < 7:
             raise MalformedPacketException("Invalid fhdr")
@@ -18,11 +20,15 @@ class FHDR:
     
     def create(self, mtype, args):
         self.devaddr = [0x00, 0x00, 0x00, 0x00]
-        self.fctrl = 0x00
+        
         if 'fcnt' in args:
             self.fcnt = args['fcnt'].to_bytes(2, byteorder='little')
         else:
             self.fcnt = [0x00, 0x00]
+        if 'fctrl' in args:
+            self.fctrl = args['fctrl']
+        else:
+            self.fctrl = 0x00
         self.fopts = []
         if mtype == MHDR.UNCONF_DATA_UP or mtype == MHDR.UNCONF_DATA_DOWN or\
                 mtype == MHDR.CONF_DATA_UP or mtype == MHDR.CONF_DATA_DOWN:
