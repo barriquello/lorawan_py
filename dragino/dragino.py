@@ -28,7 +28,7 @@ from .SX127x.board_config import BOARD
 from .LoRaWAN import new as lorawan_msg
 from .LoRaWAN import MalformedPacketException
 from .LoRaWAN.MHDR import MHDR
-from .FrequncyPlan import LORA_FREQS
+from .FrequncyPlan import CHANNELS, LORA_FREQS, LORA_FREQS_DOWNLINK, CHANNELS_HIGH, LORA_FREQS_HIGH, DR
 import pdb
 from time import sleep
 
@@ -58,6 +58,11 @@ class Dragino(LoRa):
         self.devnonce = [randrange(256), randrange(256)] #random nonce
         self.logger.debug("Nonce = %s", self.devnonce)
         self.freqs = freqs
+        self.hfreqs = LORA_FREQS_HIGH
+        self.dfreqs = LORA_FREQS_DOWNLINK
+        self.channels = CHANNELS
+        self.hchannels = CHANNELS_HIGH
+        self.DR = DR
         self.MODE = MODE
         self.state = 0
         #Set all auth method tockens to None as not sure what auth method we'll use
@@ -137,36 +142,32 @@ class Dragino(LoRa):
         self.logger.debug("Received message")
         self.clear_irq_flags(RxDone=1)
         payload = self.read_payload(nocheck=True)
-        print("".join(format(x, '02x') for x in bytes(payload)))
+        print("packet: " + "".join(format(x, '02x') for x in bytes(payload)))
         #pdb.set_trace()
         #lorawan = lorawan_msg([], self.appkey)
         lorawan = lorawan_msg(self.network_key, self.apps_key)
         #lorawan = LoRaWAN.new(self.network_key, self.apps_key)
         lorawan.read(payload)
-        print(lorawan.get_mhdr().get_mversion())
-        print(lorawan.get_mhdr().get_mtype())
-        print(lorawan.get_mic())
-        print(lorawan.compute_mic())
-        print(lorawan.valid_mic())
+        # print(lorawan.get_mhdr().get_mversion())
+        # print(lorawan.get_mhdr().get_mtype())
+        # print(lorawan.get_mic())
+        # print(lorawan.compute_mic())
+        # print(lorawan.valid_mic())
+        print("msg: " + "".join(format(x, '02x') for x in bytes(lorawan.get_payload())))
+        print("RXWIN: {}, RSSI: {}, SNR: {}, DR: {}, CH:{} @ freq {} MHz".format(self.state, self.get_pkt_rssi_value(), self.get_pkt_snr_value(),
+        self.DR.index(self.get_dr()), self.get_channel(), self.dfreqs[self.get_channel()%8]))
         if lorawan.valid_mic() == True:
-            print("================================\n")
-            print ("MENSAGEM RECEBIDA CORRETAMENTE:\n")
+            print("================================")
+            print ("MSG MIC OK:\n")
             print("".join(list(map(chr, lorawan.get_payload()))))
-            print("\n")
-            print("================================\n")
+            print("================================")
         else:
-            print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n")
-            print ("MENSAGEM RECEBIDA INCORRETAMENTE:\n")
+            print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+            print ("MSG MIC ERROR:\n")
             print("".join(list(map(chr, lorawan.get_payload()))))
-            print("\n")
-            print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n")
+            print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
 
-        print("".join(format(x, '02x') for x in bytes(lorawan.get_payload())))
-        print ("RXWIN: ", self.state)
-        print ("RSSI: ", self.get_pkt_rssi_value())    
-        print ("SNR: ", self.get_pkt_snr_value())   
-        #lorawan.get_payload()
-#        print(lorawan.get_mhdr().get_mversion())
+        # #lorawan.get_payload()
         if lorawan.get_mhdr().get_mtype() == MHDR.JOIN_ACCEPT:
             self.logger.debug("Join resp")
             #It's a response to a join request
@@ -179,9 +180,7 @@ class Dragino(LoRa):
             self.logger.info("APPS key: %s", self.apps_key)
 
         self.set_mode(MODE.SLEEP)
-        self.state = 3
-        #self.reset_ptr_rx()
-        #self.set_mode(MODE.RXSINGLE)    
+        self.state = 3  
 
     def on_tx_done(self):
         """
@@ -193,8 +192,14 @@ class Dragino(LoRa):
         self.set_dio_mapping([0, 0, 0, 0, 0, 0])
         self.set_invert_iq(1)
         self.reset_ptr_rx()
-        self.set_freq(923.9)
-        self.set_bw(9)
+        ch = self.get_channel() # goto rxwin1
+        self.set_freq(self.dfreqs[ch%8])
+        dr = self.get_dr()
+        idr = self.DR.index(dr)
+        idr = min([idr+8,13])
+        dr = self.DR[idr]
+        self.set_dr(dr)
+        print("rxwin1 @dr: {} @freq: {} MHz".format(idr, self.dfreqs[ch%8])) 
         self.set_mode(MODE.RXCONT)
 
     def on_rx_timeout(self):
@@ -299,6 +304,30 @@ class Dragino(LoRa):
                 break
         # this will be None if no message is decoded, otherwise it'll contain the information
         return msg
+
+    def set_dr(self,dr):
+        self.dr = dr
+        sf=dr[0]
+        bw=dr[1]
+        self.set_bw(bw)
+        self.set_spreading_factor(sf)
+        self.dr = dr
+
+    def get_dr(self):
+        return self.dr
+
+    def set_channel(self,ch):       
+        if (ch in self.channels):
+            freq = self.freqs[self.channels.index(ch)]
+            self.set_freq(freq)
+            self.ch = ch
+        elif (ch in self.hchannels):
+            freq = self.hfreqs[ch%8]
+            self.set_freq(freq)
+            self.ch = ch        
+
+    def get_channel(self):
+        return self.ch
 
 class DraginoError(Exception):
     """

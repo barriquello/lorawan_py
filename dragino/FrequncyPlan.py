@@ -17,25 +17,22 @@
 ###############################################################################
 
 #https://www.thethingsnetwork.org/wiki/LoRaWAN/Frequencies/Frequency-Plans
-CH1 = 916.8
-CH2 = 917.0
-CH3 = 917.2
-CH4 = 917.4
-CH5 = 917.6
-CH6 = 917.8
-CH7 = 918.0
-CH8 = 918.2
+
+#AU915-928
+
+START_CH = 8
+END_CH = 15
+
+# DR0, ..., DR13
+DR = ([12,7], [11,7], [10,7], [9,7],[8,7],[7,7],[8,9],[0,0],[12,9], [11,9], [10,9], [9,9],[8,9],[7,9])
+
+CHANNELS = tuple([i for i in range(START_CH, END_CH)])
+CHANNELS_HIGH = tuple([i for i in range(64,71)])
+
+LORA_FREQS = tuple([(i*2+9152)/10 for i in range(START_CH, END_CH)])
+LORA_FREQS_HIGH = tuple([((i%8)*5+9159)/10 for i in range(64,71)])
+
+LORA_FREQS_DOWNLINK =  tuple([(i*6+9233)/10 for i in range(0, 7)])
 
 
-DCH1 = 923.3 
-DCH2 = 923.9 
-DCH3 = 924.5 
-DCH4 = 925.1 
-DCH5 = 925.7 
-DCH6 = 926.3 
-DCH7 = 926.9 
-DCH8 = 927.5 
 
-LORA_FREQS = (CH1, CH2, CH3, CH4, CH5, CH6, CH7, CH8)
-
-LORA_FREQS_DOWNLINK =  (DCH1, DCH2, DCH3, DCH4, DCH5, DCH6, DCH7, DCH8)

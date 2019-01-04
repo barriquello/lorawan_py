@@ -28,13 +28,13 @@ while 1:
             ans += ser.readline()
         if len(ans) == 0:
             ans = "?"
-        D.set_mode(D.MODE.SLEEP)
-        freq = 917.0 #D.freqs[randrange(len(D.freqs))]#Pick a random frequency        
+        D.set_mode(D.MODE.SLEEP)              
         print("Sent message:") 
         print(ans)
-        D.set_bw(7)
-        D.set_freq(freq)
-        D.set_spreading_factor(10)
+        ch = D.channels[randrange(len(D.channels))] #Pick a random channel        
+        D.set_channel(ch)
+        print ("@ch:{} @freq {} MHz".format(ch, D.freqs[D.channels.index(ch)]))
+        D.set_dr(D.DR[2]) # set DR2
         D.send(ans)
     elif (D.state == 1 or D.state == 2):
         sleep(0.1)
@@ -43,15 +43,14 @@ while 1:
             print("rx 1 timeout")
             D.state = 2
             D.set_mode(D.MODE.STDBY)
-            D.set_freq(923.3) # goto rx win 2 / DR8
-            D.set_spreading_factor(12)
+            D.set_freq(D.dfreqs[0]) # goto rx win 2 / DR8
+            D.set_dr(D.DR[8])
             D.set_mode(D.MODE.RXCONT)            
         if timeout == 30:
             print("rx 2 timeout")    
             timeout = 0
             D.state = 0
     else:
-        
         sleep(10)
         timeout = 0
         D.state = 0         
