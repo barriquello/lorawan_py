@@ -12,7 +12,7 @@ def RemoteDebug():
         global pydevd
  
         #Configura IP da estação remota e a porta de comunicação.
-        pydevd.settrace(192.168.1.105,port=5678,suspend=True)
+        pydevd.settrace("192.168.1.107",port=5678,suspend=True)
         
         #Define o ambiente de debug.
         os.environ['TERM']='xterm'

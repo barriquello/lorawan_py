@@ -79,6 +79,7 @@ class Dragino(LoRa):
         self.config = DraginoConfig(config_filename, logging_level)
         self.lora_retries = lora_retries
         self._read_frame_count()
+        self.set_channel(self.channels[randrange(len(self.channels))]) 
         self.set_mode(MODE.SLEEP)
         self.set_dio_mapping([1, 0, 0, 0, 0, 0])
         freq = freqs[randrange(len(freqs))]#Pick a random frequency
