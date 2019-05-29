@@ -7,6 +7,11 @@ from time import sleep
 import RPi.GPIO as GPIO
 from dragino import Dragino
 
+from remotedebugfeature import RemoteDebug
+
+remote_debug = True
+if remote_debug == True:
+    RemoteDebug() 
 
 GPIO.setwarnings(False)
 
